@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DK Series Parser</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --bg2: #181c24; --bg3: #1f2330;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    --text: #f0f2f5; --muted: #8a8f9e;
+    --accent: #f0b429; --accent2: #e09010;
+    --green: #2ecc71; --red: #e74c3c;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+
+  header { padding: 1.25rem 2rem; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 12px; }
+  .logo { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1a1a1a; flex-shrink: 0; }
+  header h1 { font-size: 15px; font-weight: 600; }
+  header p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .main { max-width: 680px; margin: 0 auto; padding: 1.5rem; }
+
+  .step-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 8px; }
+  textarea {
+    width: 100%; min-height: 150px; resize: vertical;
+    background: var(--bg2); border: 0.5px solid var(--border2);
+    border-radius: var(--radius); color: var(--text);
+    font-family: monospace; font-size: 12px;
+    padding: 12px 14px; line-height: 1.6;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .hint b { color: var(--accent); font-weight: 500; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn { padding: 9px 20px; border-radius: var(--radius-sm); border: 0.5px solid var(--border2); background: var(--bg3); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+  .btn:hover { background: var(--bg2); }
+  .btn.parse { background: var(--accent); color: #1a1a1a; border-color: var(--accent2); font-weight: 700; }
+  .btn.parse:hover { background: var(--accent2); }
+
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 1.25rem 0; }
+
+  .output { display: none; }
+  .output-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .badge { font-size: 12px; color: var(--muted); background: var(--bg3); border: 0.5px solid var(--border); padding: 3px 10px; border-radius: 20px; }
+
+  /* Game cards */
+  .games-list { display: flex; flex-direction: column; gap: 8px; }
+  .game-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .game-card:hover { border-color: rgba(255,255,255,0.22); }
+  .game-teams { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .team-row { display: flex; align-items: center; justify-content: space-between; }
+  .team-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .odd { font-family: monospace; font-weight: 700; font-size: 14px; min-width: 52px; text-align: right; }
+  .odd.pos { color: var(--green); }
+  .odd.neg { color: var(--red); }
+  .divider-line { height: 0.5px; background: var(--border); margin: 2px 0; }
+  .copy-btn {
+    background: none; border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm); padding: 6px 12px;
+    font-size: 11px; color: var(--muted); cursor: pointer;
+    transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-copy-all { background: var(--bg3); border: 0.5px solid var(--border2); color: var(--text); }
+  .btn-copy-all:hover { border-color: var(--accent); color: var(--accent); }
+  .empty { text-align: center; padding: 2rem; color: var(--muted); font-size: 13px; background: var(--bg2); border-radius: var(--radius); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">DK</div>
+  <div>
+    <h1>DK Series Parser</h1>
+    <p>Pegá el texto de DraftKings — extrae Series Prices automáticamente</p>
+  </div>
+</header>
+
+<div class="main">
+  <div class="step-label">1 — Pegá el texto de DraftKings</div>
+  <textarea id="input" placeholder="Abrí DraftKings en Series Props → Series Winner, presioná Ctrl+A, Ctrl+C, y pegá aquí con Ctrl+V."></textarea>
+  <p class="hint">Funciona con el texto completo del <b>Ctrl+A</b>. Solo extrae los Series Prices, ignora todo lo demás.</p>
+  <div class="btn-row">
+    <button class="btn parse" onclick="parse()">⚡ Parsear</button>
+    <button class="btn" onclick="clearAll()">↺ Limpiar</button>
+  </div>
+
+  <hr>
+
+  <div class="output" id="output">
+    <div class="output-header">
+      <div class="step-label" style="margin:0;">2 — Resultado</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="badge" id="count-badge">0 series</span>
+        <button class="btn btn-copy-all" onclick="copyAll()">Copiar todo</button>
+      </div>
+    </div>
+    <div class="games-list" id="games-list"></div>
+  </div>
+</div>
+
+<script>
+const TEAMS = {
+  'MIA':'Miami Marlins','PIT':'Pittsburgh Pirates','SEA':'Seattle Mariners',
+  'WAS':'Washington Nationals','WSH':'Washington Nationals','SDP':'San Diego Padres',
+  'SD':'San Diego Padres','BAL':'Baltimore Orioles','TEX':'Texas Rangers',
+  'BOS':'Boston Red Sox','ARI':'Arizona Diamondbacks','CIN':'Cincinnati Reds',
+  'ATL':'Atlanta Braves','NYM':'New York Mets','DET':'Detroit Tigers',
+  'CLE':'Cleveland Guardians','NYY':'New York Yankees','TOR':'Toronto Blue Jays',
+  'LAD':'Los Angeles Dodgers','CWS':'Chicago White Sox','PHI':'Philadelphia Phillies',
+  'MIL':'Milwaukee Brewers','HOU':'Houston Astros','KCR':'Kansas City Royals',
+  'KC':'Kansas City Royals','STL':'St. Louis Cardinals','MIN':'Minnesota Twins',
+  'TBR':'Tampa Bay Rays','TB':'Tampa Bay Rays','LAA':'Los Angeles Angels',
+  'COL':'Colorado Rockies','ATH':'Oakland Athletics','OAK':'Oakland Athletics',
+  'CHC':'Chicago Cubs','SFG':'San Francisco Giants','SF':'San Francisco Giants',
+  'WSN':'Washington Nationals',
+};
+
+function resolveTeam(raw) {
+  if (!raw) return raw;
+  const up = raw.trim().toUpperCase();
+  if (TEAMS[up]) return TEAMS[up];
+  for (const [k, v] of Object.entries(TEAMS)) {
+    if (up === k) return v;
+  }
+  return raw.trim();
+}
+
+function oddClass(o) { return o && o.startsWith('+') ? 'pos' : 'neg'; }
+
+function parse() {
+  const text = document.getElementById('input').value;
+  if (!text.trim()) return;
+  const games = [];
+
+  const headerRx = /([A-Z]{2,4})\s+at\s+([A-Z]{2,4})\s+-\s+Series Winner([\s\S]*?)(?=[A-Z]{2,4}\s+at\s+[A-Z]{2,4}\s+-\s+Series Winner|MLB Betting|$)/g;
+  let m;
+  while ((m = headerRx.exec(text)) !== null) {
+    const awayAbbr = m[1];
+    const homeAbbr = m[2];
+    const block = m[3];
+    const odds = [...block.matchAll(/([−\-+]\d{3,4})/g)].map(x => x[1].replace('−','-'));
+    games.push({
+      away: resolveTeam(awayAbbr),
+      home: resolveTeam(homeAbbr),
+      mlHome: odds[0] || '—',
+      mlAway: odds[1] || '—',
+    });
+  }
+
+  if (games.length === 0) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    for (let i = 0; i < lines.length; i++) {
+      const oddMatch = lines[i].match(/^([−\-+]\d{3,4})$/);
+      if (oddMatch && i >= 1) {
+        const tm = lines[i-1].match(/^([A-Z]{2,4})\s+(.+)$/);
+        if (tm && i+2 < lines.length) {
+          const odd2Match = lines[i+2].match(/^([−\-+]\d{3,4})$/);
+          const tm2 = lines[i+1].match(/^([A-Z]{2,4})\s+(.+)$/);
+          if (tm2 && odd2Match) {
+            games.push({
+              home: resolveTeam(tm[1]),
+              away: resolveTeam(tm2[1]),
+              mlHome: oddMatch[1].replace('−','-'),
+              mlAway: odd2Match[1].replace('−','-'),
+            });
+            i += 2;
+          }
+        }
+      }
+    }
+  }
+
+  renderResults(games);
+}
+
+function renderResults(games) {
+  const list = document.getElementById('games-list');
+  const output = document.getElementById('output');
+  list.innerHTML = '';
+  document.getElementById('count-badge').textContent = games.length + ' serie' + (games.length !== 1 ? 's' : '');
+
+  if (games.length === 0) {
+    list.innerHTML = '<div class="empty">No se detectaron series. Asegurate de copiar la sección "Series Winner" de DraftKings.</div>';
+    output.style.display = 'block';
+    return;
+  }
+
+  games.forEach((g, i) => {
+    const copyText = `${g.away} ${g.mlAway}\n${g.home} ${g.mlHome}`;
+    const card = document.createElement('div');
+    card.className = 'game-card';
+    card.dataset.text = copyText;
+    card.innerHTML = `
+      <div class="game-teams">
+        <div class="team-row">
+          <span class="team-name">${g.away}</span>
+          <span class="odd ${oddClass(g.mlAway)}">${g.mlAway}</span>
+        </div>
+        <div class="divider-line"></div>
+        <div class="team-row">
+          <span class="team-name">${g.home}</span>
+          <span class="odd ${oddClass(g.mlHome)}">${g.mlHome}</span>
+        </div>
+      </div>
+      <button class="copy-btn" onclick="copyCard(this)">Copiar</button>
+    `;
+    list.appendChild(card);
+  });
+
+  output.style.display = 'block';
+}
+
+function copyCard(btn) {
+  const text = btn.closest('.game-card').dataset.text;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => btn.textContent = 'Copiar', 1500);
+  });
+}
+
+function copyAll() {
+  const cards = document.querySelectorAll('.game-card[data-text]');
+  const text = Array.from(cards).map(c => c.dataset.text).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.btn-copy-all');
+    btn.textContent = '✓ Todo copiado';
+    setTimeout(() => btn.textContent = 'Copiar todo', 2000);
+  });
+}
+
+function clearAll() {
+  document.getElementById('input').value = '';
+  document.getElementById('output').style.display = 'none';
+}
+</script>
+</body>
+</html>
