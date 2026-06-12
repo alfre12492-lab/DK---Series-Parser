@@ -14,7 +14,22 @@
     --green: #2ecc71; --red: #e74c3c;
     --radius: 10px; --radius-sm: 6px;
   }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; position: relative; overflow-x: hidden; }
+
+  .bg-field {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 1200px 1200px at 50% 100%, rgba(80,150,70,0.55) 0%, rgba(80,150,70,0.32) 50%, transparent 80%),
+      var(--bg);
+  }
+  .field-lines {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 1400px; height: 1400px; z-index: 0; pointer-events: none;
+    opacity: 1;
+  }
+
+  header, .main { position: relative; z-index: 1; }
 
   header { padding: 1.25rem 2rem; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 12px; }
   .logo { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #1a1a1a; flex-shrink: 0; }
@@ -78,6 +93,19 @@
 </style>
 </head>
 <body>
+
+<div class="bg-field"></div>
+<svg class="field-lines" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <path d="M500 950 L80 530 A 593 593 0 0 1 920 530 Z" fill="rgba(80,150,70,0.32)" stroke="rgba(80,150,70,0.6)" stroke-width="3"/>
+  <line x1="500" y1="950" x2="80" y2="530" stroke="rgba(240,240,230,0.55)" stroke-width="4"/>
+  <line x1="500" y1="950" x2="920" y2="530" stroke="rgba(240,240,230,0.55)" stroke-width="4"/>
+  <rect x="468" y="800" width="64" height="64" fill="rgba(240,240,230,0.5)" stroke="rgba(240,240,230,0.65)" stroke-width="2" transform="rotate(45 500 832)"/>
+  <rect x="270" y="600" width="40" height="40" fill="rgba(240,240,230,0.45)" stroke="rgba(240,240,230,0.6)" stroke-width="2" transform="rotate(45 290 620)"/>
+  <rect x="690" y="600" width="40" height="40" fill="rgba(240,240,230,0.45)" stroke="rgba(240,240,230,0.6)" stroke-width="2" transform="rotate(45 710 620)"/>
+  <rect x="480" y="450" width="40" height="40" fill="rgba(240,240,230,0.45)" stroke="rgba(240,240,230,0.6)" stroke-width="2" transform="rotate(45 500 470)"/>
+  <circle cx="500" cy="680" r="55" fill="rgba(190,90,55,0.38)" stroke="rgba(190,90,55,0.55)" stroke-width="2"/>
+  <circle cx="500" cy="680" r="6" fill="rgba(240,240,230,0.6)"/>
+</svg>
 
 <header>
   <div class="logo">DK</div>
