@@ -72,6 +72,7 @@
   }
   .game-card:hover { border-color: rgba(255,255,255,0.22); }
   .game-teams { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .game-time { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.04em; margin-bottom: 2px; }
   .team-row { display: flex; align-items: center; justify-content: space-between; }
   .team-name { font-size: 13px; font-weight: 500; color: var(--text); cursor: pointer; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; transition: background 0.15s, color 0.15s; }
   .team-name:hover { background: var(--bg3); color: var(--accent); }
@@ -167,10 +168,22 @@ function resolveTeam(raw) {
 
 function oddClass(o) { return o && o.startsWith('+') ? 'pos' : 'neg'; }
 
+function toMilitary(timeStr) {
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return '';
+  let h = parseInt(match[1]);
+  const min = match[2];
+  const ampm = match[3].toUpperCase();
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return String(h).padStart(2, '0') + ':' + min;
+}
+
 function parse() {
   const text = document.getElementById('input').value;
   if (!text.trim()) return;
   const games = [];
+  const seen = new Set();
 
   const headerRx = /([A-Z]{2,4})\s+at\s+([A-Z]{2,4})\s+-\s+Series Winner([\s\S]*?)(?=[A-Z]{2,4}\s+at\s+[A-Z]{2,4}\s+-\s+Series Winner|MLB Betting|$)/g;
   let m;
@@ -178,35 +191,33 @@ function parse() {
     const awayAbbr = m[1];
     const homeAbbr = m[2];
     const block = m[3];
-    const odds = [...block.matchAll(/([−\-+]\d{3,4})/g)].map(x => x[1].replace('−','-'));
-    games.push({
-      away: resolveTeam(awayAbbr),
-      home: resolveTeam(homeAbbr),
-      mlHome: odds[0] || '—',
-      mlAway: odds[1] || '—',
-    });
-  }
+    const odds = [...block.matchAll(/([−\-+]\d{3,4})/g)].map(x => x[1].replace('−', '-'));
+    const key = awayAbbr + '_' + homeAbbr;
 
-  if (games.length === 0) {
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-    for (let i = 0; i < lines.length; i++) {
-      const oddMatch = lines[i].match(/^([−\-+]\d{3,4})$/);
-      if (oddMatch && i >= 1) {
-        const tm = lines[i-1].match(/^([A-Z]{2,4})\s+(.+)$/);
-        if (tm && i+2 < lines.length) {
-          const odd2Match = lines[i+2].match(/^([−\-+]\d{3,4})$/);
-          const tm2 = lines[i+1].match(/^([A-Z]{2,4})\s+(.+)$/);
-          if (tm2 && odd2Match) {
-            games.push({
-              home: resolveTeam(tm[1]),
-              away: resolveTeam(tm2[1]),
-              mlHome: oddMatch[1].replace('−','-'),
-              mlAway: odd2Match[1].replace('−','-'),
-            });
-            i += 2;
-          }
+    // Extract Today/Tomorrow + time, convert to military
+    const timeMatch = block.match(/(Today|Tomorrow)?\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/i);
+    const militaryTime = timeMatch ? toMilitary(timeMatch[2]) : '';
+    const dayLabel = timeMatch && timeMatch[1] ? timeMatch[1] : '';
+
+    if (seen.has(key)) {
+      if (odds.length >= 2) {
+        const idx = games.findIndex(g => g.key === key);
+        if (idx !== -1) {
+          games[idx].mlHome = odds[0];
+          games[idx].mlAway = odds[1];
         }
       }
+    } else {
+      seen.add(key);
+      games.push({
+        key,
+        away: resolveTeam(awayAbbr),
+        home: resolveTeam(homeAbbr),
+        mlHome: odds[0] || '—',
+        mlAway: odds[1] || '—',
+        time: militaryTime,
+        day: dayLabel,
+      });
     }
   }
 
@@ -217,7 +228,7 @@ function renderResults(games) {
   const list = document.getElementById('games-list');
   const output = document.getElementById('output');
   list.innerHTML = '';
-  document.getElementById('count-badge').textContent = games.length + (games.length !== 1 ? ' series' : ' series');
+  document.getElementById('count-badge').textContent = games.length + ' series';
 
   if (games.length === 0) {
     list.innerHTML = '<div class="empty">No series found. Make sure to copy the "Series Winner" section from DraftKings.</div>';
@@ -226,12 +237,13 @@ function renderResults(games) {
   }
 
   games.forEach((g) => {
-    const copyText = `${g.away} ${g.mlAway}\n${g.home} ${g.mlHome}`;
+    const copyText = `${g.time ? g.time + ' ' : ''}${g.away} ${g.mlAway}\n${g.home} ${g.mlHome}`;
     const card = document.createElement('div');
     card.className = 'game-card';
     card.dataset.text = copyText;
     card.innerHTML = `
       <div class="game-teams">
+        ${g.time ? `<div class="game-time"><i class="ti ti-clock" aria-hidden="true"></i> ${g.day ? g.day + ' ' : ''}${g.time}</div>` : ''}
         <div class="team-row">
           <span class="team-name" onclick="copyTeam(this, '${g.away.replace(/'/g, "\\'")}')">${g.away}</span>
           <span class="odd ${oddClass(g.mlAway)}">${g.mlAway}</span>
@@ -255,10 +267,7 @@ function copyTeam(span, name) {
     const original = span.textContent;
     span.textContent = '✓ Copied';
     span.classList.add('copied');
-    setTimeout(() => {
-      span.textContent = original;
-      span.classList.remove('copied');
-    }, 1000);
+    setTimeout(() => { span.textContent = original; span.classList.remove('copied'); }, 1000);
   });
 }
 
